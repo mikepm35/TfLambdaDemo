@@ -1,0 +1,74 @@
+service: tflambdademo
+
+provider:
+  name: aws
+  region: us-east-1
+  runtime: python3.6
+  stage: dev
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:*
+      Resource:
+       Fn::Join:
+         - ""
+         - - "arn:aws:s3:::"
+           - ${self:provider.environment.BUCKET}
+           - "/*"
+
+  environment:
+    BUCKET: tflambdademo
+
+functions:
+  upload:
+    handler: upload.uploadHandler
+    timeout: 30
+    events:
+      - http:
+          path: upload
+          method: post
+
+  train:
+    handler: train.trainHandler
+    memorySize: 3008
+    timeout: 30
+    events:
+      - http:
+          path: train
+          method: post
+
+  infer:
+    handler: infer.inferHandler
+    timeout: 30
+    events:
+      - http:
+          path: infer
+          method: post
+
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: true
+    zip: true
+    slim: true
+    noDeploy:
+      - boto3
+      - botocore
+      - docutils
+      - jmespath
+      - pip
+      - python-dateutil
+      - s3transfer
+      - setuptools
+      - six
+      - tensorboard
+
+resources:
+  Resources:
+    SageBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.BUCKET}
